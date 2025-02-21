@@ -24,30 +24,6 @@ from sam2.modeling.backbones.utils import (
 
 from sam2.modeling.sam2_utils import DropPath, MLP
 
-# class AdapterInBlock(nn.Module):
-#     def __init__(self,dim,adapter_type):
-#         super(AdapterInBlock, self).__init__()
-#         # self.block=blk
-#         self.dim=dim
-#         self.adapter_type=adapter_type
-#         # if self.adapter_type=="adapter_attn":
-#         #     dim=self.block.shape[-1]
-#         # if self.adapter_type=="adapter_mlp":
-#         #     dim=self.block.shape[-1]
-#
-#
-#         self.prompt_learn = nn.Sequential(
-#             nn.Linear(dim, 32),
-#             nn.GELU(),
-#             nn.Linear(32, dim),
-#             nn.GELU()
-#         )
-#     def forward(self, x):
-#         prompt=self.prompt_learn(x)
-#         promped=x+prompt
-#         # net=self.block(promped)
-#         return prom
-
 
 def do_pool(x: torch.Tensor, pool: nn.Module, norm: nn.Module = None) -> torch.Tensor:
     if pool is None:
@@ -159,59 +135,19 @@ class MultiScaleBlock(nn.Module):
             activation=act_layer,
         )
 
-
-        # 定义Adapter层
-        # self.adapter_attn=nn.Sequential(
-        #     nn.Linear(dim_out, 32),
-        #     nn.GELU(),
-        #     nn.Linear(32, dim_out),
-        #     nn.GELU()
-        # )
-        #
-        # self.adapter_mlp = nn.Sequential(
-        #     nn.Linear(dim_out, 32),
-        #     nn.GELU(),
-        #     # nn.ReLU(),
-        #     nn.Linear(32, dim_out),
-        #     nn.GELU()
-        #     # nn.ReLU(),
-        # )
-
-        # nn.init.xavier_uniform_(self.adapter_attn.weight)
-        # nn.init.zeros_(self.adapter_attn.bias)
-        # nn.init.xavier_uniform_(self.adapter_mlp.weight)
-        # nn.init.zeros_(self.adapter_mlp.bias)
-
-        # for layer in self.adapter_attn:
-        #     if isinstance(layer, nn.Linear):
-        #         # 对 Linear 层使用 Xavier 初始化
-        #         nn.init.xavier_uniform_(layer.weight)
-        #         nn.init.zeros_(layer.bias)  # 对 bias 使用零初始化
-        #
-        # for layer in self.adapter_mlp:
-        #     if isinstance(layer, nn.Linear):
-        #         # 对 Linear 层使用 Xavier 初始化
-        #         nn.init.xavier_uniform_(layer.weight)
-        #         nn.init.zeros_(layer.bias)  # 对 bias 使用零初始化
-
-        # self.adapter_attn = AdapterInBlock(dim_out, "adapter_attn")
-        # self.adapter_mlp = AdapterInBlock(dim_out, "adapter_mlp")
-
+     
         if dim != dim_out:
             self.proj = nn.Linear(dim, dim_out)
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         shortcut = x  # B, H, W, C
-        # print("\n")
-        # print(f"shortcut:{shortcut.shape}")
+     
         x = self.norm1(x)
-        # print(f"norm1:{x.shape}")
 
         # Skip connection
         if self.dim != self.dim_out:
             shortcut = do_pool(self.proj(x), self.pool)
-            # print(f"输入输出维度不同时shortcut：{shortcut.shape}")
 
         # Window partition
         window_size = self.window_size
@@ -221,17 +157,9 @@ class MultiScaleBlock(nn.Module):
 
         # Window Attention + Q Pooling (if stage change)
 
-        # x=self.attn(x)
 
         x = self.attn(x)
-        # print(f"x_attn:{x.shape}")
-
-        # attn后添加adapter层
-        # x=x+self.adapter_attn(x)
-
-        # x=x+self.adapter_attn(x)
-
-        # print(f"残差连接后的adapter_attn:{x.shape}")
+  
 
         if self.q_stride:
             # Shapes have changed due to Q pooling
@@ -247,28 +175,14 @@ class MultiScaleBlock(nn.Module):
             # x=window_unpartition(x,window_size,pad_hw,(H,W))
             x = window_unpartition(x, window_size, pad_hw, (H, W))
 
-        # 残差连接
-        # x=shortcut+self.drop_path(x)
-        # print(f"attn和drop_path之后的输出：{x.shape}")
-        # print(f"第一个残差连接部分：shortcut：{shortcut.shape},x：{x_attn.shape}")
+     
         x = shortcut + self.drop_path(x)
         shortcut2=x
 
-        # MLP
         x=self.mlp(self.norm2(x))
-        # print(f"通过mlp层后：{x_mlp.shape}")
 
-
-        # x=x+self.adapter_mlp(x)
-
-
-        # 残差连接
-        # print(f"第二个残差连接部分：shortcut:{x.shape},x_mlp:{x_mlp.shape}")
         x=shortcut2+self.drop_path(x)
-        # print(f"encoder block的输出：{x.shape}")
 
-        # x = x + self.drop_path(self.mlp(self.norm2(x)))
-        # print(f"encoder block的最后输出：{x.shape}")
         return x
 
 
@@ -322,9 +236,6 @@ class Hiera(nn.Module):
             embed_dim=embed_dim,
         )
 
-
-        # 加载biomedclip模型
-        # self.biomedclip=open_clip.create_model(biomedclip_hf_api)
 
 
         # Which blocks have global att?
@@ -392,92 +303,11 @@ class Hiera(nn.Module):
 
 
 
-    #   处理文本输入
-    # def _forward_bert(self,
-    #                   x,
-    #                   # 注意力掩码如果没提供会自动计算
-    #                   attention_mask: Optional[torch.LongTensor] = None,
-    #                   # 是否返回所有隐层的状态，false代表只返回最后一层的输出
-    #                   output_hidden_states: bool = False,
-    #                   ):
-    #     # 从 biomedclip 模型中获取文本编码器部分
-    #     bert=self.biomedclip.text
-    #     # 检查是否传入了 attention_mask，如果没有传入，代码会自动生成。
-    #     # 生成方式是：将输入 x 中的每个 token 与 pad_token_id（BERT 配置中的填充 token 的 ID）进行比较，得到一个布尔值的 mask，表明哪些位置是填充的。
-    #     if attention_mask is None:
-    #         attention_mask = (x != bert.config.pad_token_id).long()
-    #
-    #     # 将输入的文本 x 和 attention_mask 传递给 BERT 模型的 transformer 部分。
-    #     out = bert.transformer(
-    #         input_ids=x,
-    #         attention_mask=attention_mask,
-    #         output_hidden_states=output_hidden_states,
-    #     )
-    #
-    #     # BERT 通常有一个池化操作（pooler），它将 transformer 的输出（通常是最后一层的输出）进行池化，通常是提取 [CLS] 标记对应的向量并进行一些处理，作为整个句子的表示。
-    #     pooled_out = bert.pooler(out, attention_mask)
-    #
-    #     # proj 是一个投影层，用于将池化后的输出映射到一个新的空间。这是为了确保输出维度与模型配置中定义的维度一致
-    #     projected = bert.proj(pooled_out)
-    #
-    #     # 获取 transformer 输出的最后一层隐藏状态的形状，这里 seq_len 是文本序列的长度
-    #     seq_len = out.last_hidden_state.shape[1]
-    #     tokens = (
-    #         out.last_hidden_state[
-    #         :, torch.arange(seq_len) != bert.pooler.cls_token_position, :
-    #         ]
-    #         if type(bert.pooler) == ClsPooler
-    #         else out.last_hidden_state
-    #     )
-    #
-    #     if bert.output_tokens:
-    #         return projected, tokens
-    #
-    #     if output_hidden_states:
-    #         return projected, out.hidden_states
-    #     else:
-    #         return projected
-
-    # def get_conditional_embeddings(
-    #         self,
-    #         batch_size: int,
-    #         # input_ids: 输入文本的 ID，形状为 (batch_size, seq_len)
-    #         input_ids: torch.Tensor,
-    #         attention_mask: torch.Tensor, #值为 1 表示该位置有效，0 表示该位置是填充的。
-    # ):
-    #
-    #
-    #     # compute conditional embeddings from texts
-    #     # 检查输入的 input_ids 的第一个维度（即文本的数量）是否与 batch_size 一致
-    #     if len(input_ids) != batch_size:
-    #         raise ValueError(
-    #             "Make sure to pass as many prompt texts as there are query images"
-    #         )
-    #     conditional_embeddings = self._forward_bert(
-    #         input_ids, attention_mask=attention_mask, output_hidden_states=False
-    #     )
-    #
-    #     # 返回经过 BERT 编码后的文本特征
-    #     return conditional_embeddings
-
-
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
 
-        # conditional_embeddings = self.get_conditional_embeddings(
-        #     batch_size=x.shape[0],
-        #     input_ids=input_ids,
-        #     attention_mask=attention_mask,
-        # )
-
-
-        # print(f"一开始的x：{x.shape}")
         x = self.patch_embed(x)
-        # print(f"patch_embed后：{x.shape}")
-        # x: (B, H, W, C)
-
-        # Add pos embed
+       
         x = x + self._get_pos_embed(x.shape[1:3])
-        # print(f"加上pos embed后：{x.shape}")
 
         outputs = []
         for i, blk in enumerate(self.blocks):
